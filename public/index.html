@@ -89,7 +89,6 @@ function setAuthUI(){
       </div>
     `;
 
-    // Toggle antara login dan register
     document.getElementById('showRegister').onclick = (e) => {
       e.preventDefault();
       document.getElementById('loginView').classList.add('hidden');
@@ -135,13 +134,21 @@ function setAuthUI(){
 }
 
 async function loadFeed(){
-  const res = await fetch(API('/posts'));
+  const res = await fetch(API('/posts'), {
+    headers: token ? {
+      'Authorization': 'Bearer ' + token
+    } : {}
+  });
   const j = await res.json();
   const feed = document.getElementById('feed');
-  if(!res.ok) { feed.innerHTML = '<p class="text-red-600">Gagal memuat feed</p>'; return; }
+  if(!res.ok) { 
+    feed.innerHTML = '<p class="text-red-600">Gagal memuat feed</p>'; 
+    return; 
+  }
   feed.innerHTML = j.posts.map(renderPost).join('');
   attachPostHandlers();
 }
+
 
 function renderPost(p){
   const canDelete = p.can_edit ? `<button data-del="${p.id}" class="text-sm text-red-600 underline">Hapus</button>` : '';

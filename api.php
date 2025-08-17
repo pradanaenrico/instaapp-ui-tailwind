@@ -26,6 +26,8 @@ function auth_user(){
   if (preg_match('/Bearer\s+(.*)/', $hdr, $m)) {
     $payload = jwt_verify($m[1], $cfg['jwt_secret']);
     if ($payload) return $payload;
+
+    // var_dump($payload); exit;
   }
   return null;
 }
@@ -36,7 +38,7 @@ function require_auth(){
   return $u;
 }
 
-// Helper to fetch post with nested info
+
 function hydrate_post($row, $user_id=null){
   global $pdo;
   $stmt = $pdo->prepare("SELECT COUNT(*) FROM likes WHERE post_id = ?");
@@ -58,6 +60,7 @@ function hydrate_post($row, $user_id=null){
   $stmt->execute([$row['user_id']]);
   $author = $stmt->fetchColumn();
   // var_dump(($row['image_path'] ? ('http://localhost/InstaApp/uploads/'.basename($row['image_path'])) : null));exit;
+  // var_dump($user_id);
   return [
     'id'=>$row['id'],
     'caption'=>$row['caption'],
@@ -71,7 +74,7 @@ function hydrate_post($row, $user_id=null){
   ];
 }
 
-// ROUTES
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 try {
