@@ -59,12 +59,11 @@ function hydrate_post($row, $user_id=null){
   $stmt = $pdo->prepare("SELECT username FROM users WHERE id=?");
   $stmt->execute([$row['user_id']]);
   $author = $stmt->fetchColumn();
-  // var_dump(($row['image_path'] ? ('http://localhost/InstaApp/uploads/'.basename($row['image_path'])) : null));exit;
-  // var_dump($user_id);
+
   return [
     'id'=>$row['id'],
     'caption'=>$row['caption'],
-    'image_url'=>($row['image_path'] ? ('http://localhost/InstaApp/uploads/'.basename($row['image_path'])) : null),
+    'image_url'=>($row['image_path'] ? ($cfg['uploads_dir'].'/'.basename($row['image_path'])) : null),
     'created_at'=>$row['created_at'],
     'author'=>$author,
     'likes'=>$likes,
