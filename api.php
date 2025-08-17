@@ -41,6 +41,7 @@ function require_auth(){
 
 function hydrate_post($row, $user_id=null){
   global $pdo;
+  global $cfg;
   $stmt = $pdo->prepare("SELECT COUNT(*) FROM likes WHERE post_id = ?");
   $stmt->execute([$row['id']]);
   $likes = (int)$stmt->fetchColumn();
