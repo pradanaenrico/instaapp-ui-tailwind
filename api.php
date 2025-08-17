@@ -63,7 +63,7 @@ function hydrate_post($row, $user_id=null){
   return [
     'id'=>$row['id'],
     'caption'=>$row['caption'],
-    'image_url'=>($row['image_path'] ? ($cfg['uploads_dir'].'/'.basename($row['image_path'])) : null),
+    'image_url'=>($row['image_path'] ? ( __DIR__ . '/uploads/'.basename($row['image_path'])) : null),
     'created_at'=>$row['created_at'],
     'author'=>$author,
     'likes'=>$likes,
