@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>InstaApp</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div class="max-w-2xl mx-auto p-4">
+    <header class="flex items-center justify-between mb-4">
+      <h1 class="text-2xl font-bold">InstaApp</h1>
+      <div id="authArea"></div>
+    </header>
+
+    <div id="authViews" class="bg-white rounded-2xl p-4 shadow mb-4"></div>
+    <div id="composer" class="bg-white rounded-2xl p-4 shadow mb-4 hidden">
+      <h2 class="font-semibold mb-2">Buat Postingan</h2>
+      <form id="postForm" class="space-y-3">
+        <textarea id="caption" class="w-full border rounded p-2" placeholder="Tulis caption..."></textarea>
+        <input id="image" type="file" accept="image/*" class="w-full" />
+        <button class="px-4 py-2 bg-black text-white rounded-xl">Posting</button>
+      </form>
+    </div>
+
+    <div id="feed"></div>
+  </div>
+
+<script>
+const API = (path) => '../api.php' + path;
+let token = localStorage.getItem('token');
+let username = localStorage.getItem('username');
+console.log(token);
+
+function setAuthUI(){
+  const authArea = document.getElementById('authArea');
+  const authViews = document.getElementById('authViews');
+  const composer = document.getElementById('composer');
+  if (token){
+    authArea.innerHTML = `
+      <div class="flex items-center gap-2">
+        <span class="text-sm">👋 ${username}</span>
+        <button id="logoutBtn" class="text-sm underline">Logout</button>
+      </div>`;
+    authViews.innerHTML = '';
+    composer.classList.remove('hidden');
+    document.getElementById('logoutBtn').onclick = ()=>{
+      localStorage.clear(); token=null; username=null;
+      setAuthUI(); loadFeed();
+    };
+  } else {
+    composer.classList.add('hidden');
+    authArea.innerHTML = '';
+    authViews.innerHTML = `
+      <div id="loginView" class="flex justify-center items-center min-h-[60vh] w-full">
+        <div class="bg-white rounded-3xl shadow-lg p-8 w-full max-w-md">
+          <h2 class="text-2xl font-bold text-center mb-2">Selamat Datang</h2>
+          <p class="text-center text-gray-500 mb-6">Masuk untuk melanjutkan ke InstaApp</p>
+
+          <form id="loginForm" class="space-y-4">
+            <input id="login_username" class="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-black focus:outline-none" placeholder="Username" />
+            <input id="login_password" type="password" class="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-black focus:outline-none" placeholder="Password" />
+            <button class="w-full bg-black text-white py-3 rounded-xl hover:bg-gray-800 transition">Masuk</button>
+          </form>
+
+          <p class="text-center text-gray-500 mt-6">
+            Belum punya akun? 
+            <a href="#" id="showRegister" class="text-black font-semibold underline">Daftar di sini</a>
+          </p>
+        </div>
+      </div>
+
+      <div id="registerView" class="hidden flex justify-center items-center min-h-[60vh] w-full">
+        <div class="bg-white rounded-3xl shadow-lg p-8 w-full max-w-md">
+          <h2 class="text-2xl font-bold text-center mb-2">Daftar</h2>
+          <p class="text-center text-gray-500 mb-6">Buat akun baru untuk mulai</p>
+
+          <form id="regForm" class="space-y-4">
+            <input id="reg_username" class="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-black focus:outline-none" placeholder="Username" />
+            <input id="reg_password" type="password" class="w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-black focus:outline-none" placeholder="Password" />
+            <button class="w-full bg-black text-white py-3 rounded-xl hover:bg-gray-800 transition">Daftar</button>
+          </form>
+
+          <p class="text-center text-gray-500 mt-6">
+            Sudah punya akun? 
+            <a href="#" id="showLogin" class="text-black font-semibold underline">Masuk di sini</a>
+          </p>
+        </div>
+      </div>
+    `;
+
+    // Toggle antara login dan register
+    document.getElementById('showRegister').onclick = (e) => {
+      e.preventDefault();
+      document.getElementById('loginView').classList.add('hidden');
+      document.getElementById('registerView').classList.remove('hidden');
+    };
+    document.getElementById('showLogin').onclick = (e) => {
+      e.preventDefault();
+      document.getElementById('registerView').classList.add('hidden');
+      document.getElementById('loginView').classList.remove('hidden');
+    };
+
+    document.getElementById('regForm').onsubmit = async (e)=>{
+      e.preventDefault();
+      const res = await fetch(API('/register'),{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({username: reg_username.value.trim(), password: reg_password.value})
+      });
+      const j = await res.json();
+      if(!res.ok) return alert(j.error||'Gagal daftar');
+      alert('Berhasil daftar, silakan login');
+
+      document.getElementById('regForm').reset();
+    };
+
+    document.getElementById('loginForm').onsubmit = async (e)=>{
+      e.preventDefault();
+      const res = await fetch(API('/login'),{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({username: login_username.value.trim(), password: login_password.value})
+      });
+      const j = await res.json();
+      if(!res.ok) return alert(j.error||'Gagal login');
+      token = j.token; username = j.user.username;
+      localStorage.setItem('token', token);
+      localStorage.setItem('username', username);
+
+      document.getElementById('loginForm').reset();
+      setAuthUI(); loadFeed();
+    };
+  }
+}
+
+async function loadFeed(){
+  const res = await fetch(API('/posts'));
+  const j = await res.json();
+  const feed = document.getElementById('feed');
+  if(!res.ok) { feed.innerHTML = '<p class="text-red-600">Gagal memuat feed</p>'; return; }
+  feed.innerHTML = j.posts.map(renderPost).join('');
+  attachPostHandlers();
+}
+
+function renderPost(p){
+  const canDelete = p.can_edit ? `<button data-del="${p.id}" class="text-sm text-red-600 underline">Hapus</button>` : '';
+  return `
+  <article class="bg-white rounded-2xl shadow mb-4 overflow-hidden">
+    <div class="p-4 flex items-center justify-between">
+      <div class="font-semibold">@${p.author}</div>
+      <div class="text-xs text-gray-500">${new Date(p.created_at).toLocaleString()}</div>
+    </div>
+    ${p.image_url ? `<img src="${p.image_url}" class="w-full max-h-[480px] object-cover">` : ''}
+    <div class="p-4 space-y-3">
+      ${p.caption ? `<p>${p.caption}</p>`:''}
+      <div class="flex items-center gap-3">
+        <button data-like="${p.id}" class="px-3 py-1 rounded-full border">${p.liked?'❤️':'🤍'} ${p.likes}</button>
+        ${canDelete}
+      </div>
+      <div class="space-y-2">
+        <form data-comment="${p.id}" class="flex gap-2">
+          <input class="flex-1 border rounded p-2" placeholder="Tulis komentar..." />
+          <button class="px-3 py-2 bg-black text-white rounded-xl">Kirim</button>
+        </form>
+        <div class="space-y-1">
+          ${p.comments.map(c=>`
+            <div class="text-sm"><span class="font-semibold">@${c.author}</span> ${c.text} <span class="text-xs text-gray-500">• ${new Date(c.created_at).toLocaleString()}</span></div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  </article>`;
+}
+
+function attachPostHandlers(){
+  document.querySelectorAll('[data-like]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      if(!token) return alert('Harus login untuk like');
+      const id = btn.getAttribute('data-like');
+      const res = await fetch(API(`/posts/${id}/like`), {method:'POST', headers:{'Authorization':'Bearer '+token}});
+      if(!res.ok){ const j=await res.json(); return alert(j.error||'Gagal like'); }
+      loadFeed();
+    };
+  });
+  document.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      if(!token) return;
+      const id = btn.getAttribute('data-del');
+      if(!confirm('Hapus postingan ini?')) return;
+      const res = await fetch(API(`/posts/${id}`), {method:'DELETE', headers:{'Authorization':'Bearer '+token}});
+      if(!res.ok){ const j=await res.json(); return alert(j.error||'Gagal hapus'); }
+      loadFeed();
+    };
+  });
+  document.querySelectorAll('form[data-comment]').forEach(form=>{
+    form.onsubmit = async (e)=>{
+      e.preventDefault();
+      if(!token) return alert('Harus login untuk komentar');
+      const id = form.getAttribute('data-comment');
+      const input = form.querySelector('input');
+      const text = input.value.trim();
+      if(!text) return;
+      const res = await fetch(API(`/posts/${id}/comments`), {method:'POST', headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'}, body: JSON.stringify({text})});
+      if(!res.ok){ const j=await res.json(); return alert(j.error||'Gagal komentar'); }
+      input.value='';
+      loadFeed();
+    };
+  });
+}
+
+document.getElementById('postForm').onsubmit = async (e)=>{
+  e.preventDefault();
+  if(!token) return alert('Harus login');
+  const fd = new FormData();
+  fd.append('caption', document.getElementById('caption').value);
+  const file = document.getElementById('image').files[0];
+  if (file) fd.append('image', file);
+  const res = await fetch(API('/posts'), { 
+    method: 'POST',
+    body: fd,
+    headers: {
+      Authorization: 'Bearer ' + token,
+    }
+  });
+  const j = await res.json();
+  if(!res.ok){ return alert(j.error||'Gagal posting'); }
+  document.getElementById('postForm').reset();
+  loadFeed();
+};
+
+setAuthUI();
+loadFeed();
+</script>
+</body>
+</html>
